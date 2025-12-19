@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+        }
+
+        body {
+            background: transparent;
+            padding: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: auto;
+            width: auto;
+            box-sizing: border-box;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #fillA,
+        #fillB {
+            width: 120px;
+            height: 50px;
+            padding: 12px 10px;
+            margin: 2px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        #fill:hover {
+            background: linear-gradient(135deg, #764ba2, #667eea);
+            box-shadow: 0 12px 24px rgba(102, 126, 234, 0.4);
+            /* transform: translateY(-2px); */
+        }
+
+        #fill:active {
+            /* transform: scale(0.98); */
+            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.2);
+        }
+    </style>
+</head>
+
+<body>
+
+    <body>
+        <div class="card">
+            <button id="fillA">課程系統</button>
+            <!-- <button id="fillB">會計系統</button> -->
+        </div>
+        <script src="popup.js"></script>
+    </body>
+
+</html>
