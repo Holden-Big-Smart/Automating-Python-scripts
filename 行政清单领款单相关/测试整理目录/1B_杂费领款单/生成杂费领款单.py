@@ -258,12 +258,15 @@ def process_net_file(pdf_path):
 # 📘 PDF 解析逻辑 (Facebook - PyMuPDF/Fitz)
 # ============================================================
 def process_fb_file(pdf_path):
-    """处理 Facebook PDF"""
+    """处理 Facebook PDF (精确提取目标页面的日期和金额)"""
     doc = fitz.open(pdf_path)
     target_page = None
     invoice_number = None
     hkd_amount = None
+    target_date = None # 用于存储提取到的日期对象
 
+    # 1. 🔍 定位“山景服務處”页面
+    # 只有包含该关键词的页面才会被处理，避免混淆其他分中心的日期/价格
     for page in doc:
         text = page.get_text()
         if "山景服務處" in text:
@@ -273,7 +276,7 @@ def process_fb_file(pdf_path):
     if not target_page:
         raise ValueError("❌ 未找到 '山景服務處' 页面")
 
-    # 提取文本块
+    # 提取目标页面的所有文本行
     lines = []
     blocks = target_page.get_text("dict")["blocks"]
     for b in blocks:
@@ -281,7 +284,7 @@ def process_fb_file(pdf_path):
             line_text = " ".join(span["text"].strip() for span in line["spans"])
             lines.append(line_text.strip())
 
-    # 提取金额
+    # 2. 💰 提取金额 (Balance Due -> HKD...)
     balance_indices = [i for i, l in enumerate(lines) if l == "Balance Due"]
     for idx in balance_indices:
         if idx + 1 < len(lines):
@@ -291,27 +294,58 @@ def process_fb_file(pdf_path):
                 break
     
     if not hkd_amount:
-        # 尝试备用提取逻辑，有时候金额在同一行
         raise ValueError("❌ 未找到金额 (Balance Due)")
     
     amount_clean = hkd_amount.replace("HKD", "").replace(",", "").strip()
     amount_float = float(amount_clean)
 
-    # 提取发票号 (Project ID)
+    # 3. 🔢 提取发票编号 (# INV-...)
     for line in lines:
         if line.startswith("# INV-"):
             invoice_number = line
             break
-    
-    if not invoice_number:
-        invoice_number = "Unknown"
-    
-    project_id = invoice_number.replace("# ", "").strip()
-    
-    # 日期逻辑 (通常取当前日期作为描述中的日期)
-    now = datetime.datetime.now()
-    excel_desc = f"網上宣傳費({now.month}/{now.year})"
+    project_id = invoice_number.replace("# ", "").strip() if invoice_number else "Unknown"
 
+    # 4. 🗓️ 提取发票日期 (Invoice Date)
+    # 逻辑：遍历行，找到 "Invoice Date" 关键词，尝试在当前行或下一行提取日期格式 (如 23 Dec 2025)
+    for i, line in enumerate(lines):
+        if "Invoice Date" in line:
+            # 尝试在当前行找日期 (正则: 数字 + 英文月 + 四位年份)
+            # 例如: "Invoice Date: 23 Dec 2025" 或 下一行 "23 Dec 2025"
+            date_pattern = r"(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})"
+            
+            # 先查当前行
+            match = re.search(date_pattern, line)
+            
+            # 如果当前行没找到，且还有下一行，查下一行
+            if not match and i + 1 < len(lines):
+                match = re.search(date_pattern, lines[i+1])
+            
+            if match:
+                day_str, month_abbr, year_str = match.groups()
+                try:
+                    # 将 "23 Dec 2025" 转为 datetime 对象
+                    target_date = datetime.datetime.strptime(f"{day_str} {month_abbr} {year_str}", "%d %b %Y")
+                    print(f"✅ 已提取发票日期: {target_date.strftime('%Y-%m-%d')}")
+                except Exception as e:
+                    print(f"⚠️ 日期格式转换失败: {e}")
+            break # 找到后即停止
+
+    # 5. 📂 确定文件名和描述用的年月
+    if target_date:
+        use_year = target_date.year
+        use_month = target_date.month
+    else:
+        print("⚠️ 未从 PDF 提取到日期，将使用当前运行日期作为替补。")
+        now = datetime.datetime.now()
+        use_year = now.year
+        use_month = now.month
+
+    # 生成 Excel 描述和文件名
+    excel_desc = f"網上宣傳費({use_month}/{use_year})"
+    out_name = f"{use_year}年{use_month}月FaceBook宣传费领款单.docx"
+
+    # 获取领款日期 (依然基于当前运行时间计算 15号/1号 规则)
     date_info = get_date_logic()
 
     context = {
@@ -333,8 +367,7 @@ def process_fb_file(pdf_path):
         "invoice_no": project_id
     }
 
-    return context, excel_data, TEMPLATE_FB, "FaceBook宣传费领款单.docx"
-
+    return context, excel_data, TEMPLATE_FB, out_name
 # ============================================================
 # 📊 Excel 写入逻辑
 # ============================================================
