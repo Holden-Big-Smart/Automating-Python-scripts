@@ -166,6 +166,8 @@ pip install pandas openpyxl python-docx docxtpl PyPDF2 pymupdf docx2pdf
 ## 🚀 使用流程 (Step-by-Step)
 
 建议按照以下顺序执行脚本，以完成全套工作流：
+<img width="4235" height="1190" alt="未命名" src="https://github.com/user-attachments/assets/50cb533b-1309-4cae-a6b1-2b5d572ddee6" />
+
 
 ### 第一步：初始化与清理 (可选)
 
